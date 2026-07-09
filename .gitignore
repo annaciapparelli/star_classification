@@ -1,0 +1,15 @@
+.Rhistory
+
+.RData
+
+.Rproj.user/
+
+.DS_Store
+
+*.log
+
+*.aux
+
+*.out
+
+*.toc
