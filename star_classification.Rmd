@@ -1,0 +1,1074 @@
+---
+title: "Star Classification"
+author: "Clelia Meloni, Anna Ciapparelli, Tommaso Roncaglio"
+date: "2025-04-03"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+    number_sections: true
+    df_print: paged
+    runtime: shiny
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+## Business Understanding
+
+Il progetto si concentra sull'analisi di un dataset relativo alla classificazione di oggetti astronomici, in particolare stelle, galassie e quasar.
+La classificazione si basa sulle principali caratteristiche spettrali degli oggetti, con dati raccolti dallo SDSS (Sloan Digital Sky Survey).
+
+L'obiettivo principale dell'analisi è la creazione di un modello predittivo in grado di classificare gli oggetti astrofisici rilevati, sfruttando specifiche caratteristiche spettrali.
+Oltre a ciò, il progetto si propone di ottenere ulteriori benefici, tra cui:
+
+-   Maggiore efficienza operativa, grazie alla riduzione dei tempi di analisi e dei costi associati alla gestione di grandi dataset, attraverso la computerizzazione del processo.
+-   Migliore analisi dei dati astronomici, che consenta una classificazione più accurata.
+-   Maggiore efficienza nelle scoperte scientifiche, grazie alla possibilità di identificare nuovi oggetti astronomici con maggiore precisione.
+
+Per raggiungere questi obiettivi, il dataset originale verrà suddiviso in tre sottogruppi di diverse proporzioni:
+
+-   **Training set**: utilizzato per addestrare il modello.
+-   **Validation set**: utile per ottimizzare i parametri e prevenire problemi di overfitting.
+-   **Test set**: impiegato per valutare la performance dei modelli.
+
+L'analisi prevede il confronto di diversi modelli di classificazione, tra cui:
+
+-   **Analisi Discriminante**:
+    -   **LDA (Linear Discriminant Analysis)**: assume che le classi abbiano distribuzioni normali con la stessa matrice di covarianza, portando a decision boundaries lineari.
+    -   **QDA (Quadratic Discriminant Analysis)**: permette una matrice di covarianza diversa per ciascuna classe, generando decision boundaries quadratiche.
+-   **K-Nearest Neighbors (KNN)**: un metodo basato sulla vicinanza dei punti nello spazio delle caratteristiche.
+-   **Alberi decisionali**:
+    -   Suddividono iterativamente il dataset in base ai valori delle variabili predittive.
+    -   Sono interpretabili e non richiedono la trasformazione delle variabili categoriali.
+    -   Possono soffrire di overfitting se non potati correttamente.
+    -   Versioni avanzate come Random Forest o Gradient Boosting Trees possono migliorare la performance riducendo la varianza.
+
+L'obiettivo è identificare il modello che gestisce al meglio i dati, bilanciando il trade-off tra bias e varianza, evitando problemi di mis-specificazione e overfitting, e garantendo un'elevata capacità di generalizzazione.
+
+Le domande chiave che guideranno l'analisi sono:
+
+1.  Quali variabili influenzano maggiormente la classificazione?
+2.  Quanto il modello riesce a interpretare il fenomeno in esame?
+3.  Sono presenti valori anomali comuni a tutte le variabili che potrebbero influenzare la classificazione?
+4.  Esistono classi sottorappresentate che potrebbero portare al paradosso dell'accuracy?
+
+## Data Understanding
+
+Il dataset in analisi prende in considerazione **100000 osservazioni** astronomiche raccolte dallo **Sloan Digital Sky Survey (SDSS)**, descrivendole attraverso **17 variabili numeriche**.
+L’ultima variabile del dataset è “class”, la quale è funzionale alla classificazione delle osservazioni in 3 categorie: *Galassia, Stella, Quasar*.
+
+**Variabili ID**
+
+-   `obj_ID`: Identificativo univoco dell’oggetto nel catalogo.
+-   `spec_obj_ID`: Identificativo univoco per gli oggetti spettroscopici.
+-   `run_ID`: Identifica la scansione specifica.
+-   `rereun_ID`: Indica il modo in cui l'immagine è stata elaborata.
+-   `cam_col`: Colonna della fotocamera utilizzata nella scansione.
+-   `field_ID`: Numero di campo per identificare l’area osservata.
+-   `plate`: ID della lastra che ha catturato lo spettro.
+-   `MJD`: Data Giuliana Modificata, indica il momento dell’osservazione.
+-   `fiber_ID`: Identifica la fibra ottica usata per catturare la luce dell’oggetto.\
+
+Queste variabili ID sono diversi identificatori delle tecniche e strumenti utilizzati per l’elaborazione e la scansione degli oggetti come ad esempio le lastre, le fibre ottiche o la data in cui è stata effettuata l'osservazione.
+
+**Variabili per le coordinate spaziali**
+
+-   `delta`: Declinazione (DEC) in gradi.
+-   `alpha`: Ascensione retta (RA) in gradi.\
+
+Le coordinate celesti servono per identificare la posizione degli astri sulla sfera celeste, esse prendono come riferimenti l'equatore celeste, i cerchi orari (o meridiani) ed il punto d'ariete (γ), ossia il punto in cui il sole passa dalla semisfera sud a quella nord.
+A titolo informativo, è interessante sapere che a volte, al posto della declinazione si usa la distanza polare (p), che è la distanza angolare dell'astro dal polo nord celeste e che varia da 0° a 180° (essendo angoli complementari, p + δ = 90°).
+
+**Variabili per i filtri fotometrici**
+
+-   `u`: Filtro “Near-ultraviolet” (355 nm).
+-   `g`: Filtro “Green” (477 nm).
+-   `r`: Filtro “Red” (622 nm).
+-   `i`: Filtro “Near-Infrared” (763 nm).
+-   `z`: Filtro “Infrared” (893 nm).\
+
+Una stella emette un flusso di radiazioni elettromagnetiche che dipendono dalla sua temperatura superficiale.
+Queste radiazioni vengono percepite dall’occhio umano come luce visibile, la quale determina il colore della stella, come appare alla nostra vista.
+Tuttavia, la luce emessa dalla stella ha uno spettro continuo che si estende per una notevole gamma di frequenze ed una loro analisi consente di scoprire come si comporta il corpo celeste.
+Per isolare la radiazione luminosa nelle varie bande vengono usati i filtri fotometrici, ossia filtri accuratamente tarati in modo che la percentuale di flusso luminoso registrato in ogni frequenza sia conforme a un certo standard prestabilito.\
+Esistono molti sistemi fotometrici, quello considerato all’interno di questo dataset è quello di SDSS che considera le cinque bande ottiche come descritto precedentemente.
+
+**Variabile di spostamento**
+
+-   `redshift`: Fenomeno per cui la luce emessa dagli oggetti in allontanamento ha una lunghezza d'onda maggiore rispetto a quella che aveva all'emissione.\
+
+Il nome inglese “redshift” deriva dal fatto che la luce va in direzione dell’estremo dello spettro del visibile, che è appunto rappresentato dal colore rosso.
+Il caso contrario sarebbe quello del “blueshift” dove la lunghezza d'onda diminuisce quando la luce si muove verso un osservatore.\
+La tecnica di osservazione di questo dataset è la fotometria, la quale tuttavia è più semplice e porta ad una stima piuttosto approssimativa del redshift.
+L’alternativa ottimale sarebbe quella di valutare il redshift con la spettroscopia, la quale è però una tecnica più complessa in quanto viene influenzata negativamente da aspetti come la mancanza di luce e strumenti poco professionali.\
+In linea generale, la spettroscopia è il metodo più preciso per misurare il redshift, ma nel caso in cui non fosse possibile utilizzarla la fotometria fornisce una stima valida.
+
+**Variabile target**
+
+-   `class`: Indica la categoria dell'oggetto (*stella, galassia, quasar*).\
+
+Forniamo una breve descrizione di queste tre categorie per comprenderne meglio il significato:\
+Una **galassia** è un sistema gravitazionalmente legato di stelle e altre componenti di materia.\
+Una **stella** è un corpo celeste formato da plasma e gas a temperatura elevata.\
+Un **quasar** è un oggetto extragalattico che emette un'enorme quantità di energia.
+
+**Presentazione del dataset**
+
+```{r}
+library(MASS)      
+library(class)   
+library(rpart)    
+library(rpart.plot) 
+library(caret)     
+library(tidyverse)
+library(gridExtra)
+library(ROCR)
+
+library(readxl)
+star_classification <- read_excel("star_classification.xlsx")
+
+for (i in 1:12) {
+  star_classification[, i] <- as.numeric(unlist(star_classification[, i]))
+}
+for (i in 13:14) {
+  star_classification[, i] <- as.character(unlist(star_classification[, i]))
+}
+for (i in 15:18) {
+  star_classification[, i] <- as.numeric(unlist(star_classification[, i]))
+}
+
+#View(star_class)
+#str(star_classification)
+star_classification$cam_col <- as.factor(star_classification$cam_col)
+set.seed(123)
+
+train_size <- floor(0.80 * nrow(star_classification))
+train_index <- sample(seq_len(nrow(star_classification)), size = train_size)
+
+training <- star_classification[train_index, ]
+test <- star_classification[-train_index, ]
+
+subtrain_size <- floor(0.65 * nrow(training))
+subtrain_index <- sample(seq_len(nrow(training)), size = subtrain_size)
+
+sub_training <- training[subtrain_index, ]
+validation <- training[-subtrain_index, ]
+data <- sub_training
+dim(data) # 52000    18
+dim(validation) #28000    18
+dim(test) #20000    18
+# Se necessario, puoi anche verificare le prime righe per essere sicuro che i dati siano formattati correttamente:
+head(data)
+
+#Gestione delle variabili ID
+length(unique(sub_training$obj_ID))
+# 80846 osservazioni sono singole mentre le restanti 19154 sono osservazioni ripetute
+
+```
+
+Nel dataset ogni osservazione effettuata è univoca (spec_obj_ID) ma alcuni degli oggetti che sono stati osservati in queste osservazioni si ripetono (obj_ID) e non sono per questo singolari.
+Abbiamo per questo ritenuto opportuno eliminare le osservazioni che si ripetono nel set di dati.
+
+```{r }
+data <- subset(sub_training, !duplicated(obj_ID))
+
+
+validation <- subset(validation, !duplicated(obj_ID))
+
+test <- subset(test, !duplicated(obj_ID))
+```
+
+Il dataset oggetto di analisi viene suddiviso in 3 sottoinsiemi: un training set, il quale è funzionale in una prima fase di addestramento dei modelli con lo scopo di comprendere le relazioni che intercorrono tra le variabili (80% del totale dei dati), un validation set che permette di stimare i parametri dei modelli e valutarne la qualità delle analisi (45% del training) ed infine un test set (20% del totale dei dati), che verrà utilizzato per valutare le prestazioni finali del modello che è stato scelto, osservando la sua capacità di generalizzare l’analisi a dati nuovi.
+La decisione di considerare all’interno del nostro progetto anche il validation set deriva dalla volontà di limitare gli effetti di underfitting o overfitting che potrebbero nascere dalle analisi del dataset.
+Attraverso questa suddivisione andremo a valutare una serie di modelli di classificazione: il K-Nearest Neighbours (KNN), la regressione multinomiale, gli alberi decisionali (di classificazione), la Linear Discriminant Analysis e la Quadratic Discriminant Analysis, con l’obiettivo di individuare il metodo che meglio classifica i dati a nostra disposizione.
+
+```{r}
+# Rimozione delle colonne ID non utili
+data <- subset(data,select=-c(obj_ID, spec_obj_ID, plate, fiber_ID, MJD, rerun_ID, run_ID, field_ID))
+validation <- subset(validation,select=-c(obj_ID, spec_obj_ID, plate, fiber_ID, MJD, rerun_ID, run_ID, field_ID))
+test <- subset(test,select=-c(obj_ID, spec_obj_ID, plate, fiber_ID, MJD, rerun_ID, run_ID, field_ID))
+dim(validation);str(validation)
+dim(test);str(test)
+dim(data);str(data)
+```
+
+Oltre che gli ID degli oggetti citati precedentemente, sono presenti altre variabili che rappresentano diversi identificatori delle tecniche e degli strumenti strumenti utilizzati per l’elaborazione e la scansione degli oggetti.
+Esse a livello di analisi non sono particolarmente significative ed inoltre assumono valori particolarmente differenti in range molto ampi, rendendo complessa la loro gestione all’interno del dataset.
+L’unica variabile ID con un numero di valori limitato è cam_col, la quale può essere trattata come una variabile categoriale con 6 livelli, che possono essere gestiti con relativa semplicità.
+Abbiamo per questo motivo deciso di mantenerla nel dataset finale e rimuovere le altre.
+
+## Data Pre-Processing
+
+```{r}
+#Analisi esplorativa: rappresentazione delle frequenze relative per ciascuna classe
+summary(data)
+ggplot(data, aes(x = class)) + geom_bar(aes(y=after_stat(count)/sum(after_stat(count))), fill = "cornflowerblue") +
+  labs(title="Grafico frequenze relative", x="Classi", y="Frequenze relative") + theme_minimal() 
+
+def <- data
+
+# Conversione delle classi in numerico (0 = Galaxy, 1 = Star, 2 = Quasar), utile alla classificazione
+def$class <- as.numeric(factor(data$class, levels = c("GALAXY", "STAR", "QSO"))) 
+def$class <- as.factor(data$class)
+
+#Visualizzazione grafica della correlazione delle classi
+library(corrplot)
+data_cor <- def[,-c(8,9)]
+cor_matrix <- cor(data_cor)
+corrplot(cor_matrix, method = "color",
+         type = "upper",
+         order = "hclust",
+         addCoef.col = "black",
+         col = colorRampPalette(c("white", "lightblue1", "cadetblue4"))(200),
+         tl.col = "black", tl.srt = 45)
+```
+
+Ai fini dell’analisi è funzionale che le variabili non siano correlate tra loro in quanto ciò comporta che esse apportino un contributo singolare al dataset finale e che quindi non ci sia ridondanza nelle informazioni che sono veicolate dalle variabili.
+Siamo quindi inclini a considerare questo risultato in senso positivo e procedere con l’analisi.
+
+```{r}
+# Creazione dei boxplot per ogni variabile numerica
+numeric_vars <- def[ , sapply(def, is.numeric)]
+num_vars <- ncol(numeric_vars)  
+
+par(mfrow = c(3, 3))
+
+for (var in colnames(numeric_vars)) {
+  boxplot(numeric_vars[[var]] ~ def$class, 
+          main = var, 
+          xlab = "Classe", 
+          ylab = "Valore",
+          col = c("red", "green", "blue"),   
+          outline = TRUE,                    
+          pch = 19)                         
+}
+
+par(mfrow=c(1,1))
+
+#Ricerca e analisi outliers
+# Sono presenti diversi outlier che potrebbero influenzare l'analisi, procediamo alla loro eliminazione
+# Selezione delle colonne di interesse  
+#Training set
+data_con_outliers <- def |> select(u, g, r, i, z)  
+#Validation set
+validation_con_outliers <- validation |> select(u, g, r, i, z)  
+
+#Eliminazione degli outliers tramite scarto interquartile 
+#Training set
+Q1 <- apply(data_con_outliers, 2, quantile, 0.25, na.rm = TRUE)  
+Q3 <- apply(data_con_outliers, 2, quantile, 0.75, na.rm = TRUE)  
+IQR <- Q3 - Q1  
+lower <- Q1 - 1.5 * IQR  
+upper <- Q3 + 1.5 * IQR  
+#Validation set
+Q1_2 <- apply(validation_con_outliers, 2, quantile, 0.25, na.rm = TRUE)  
+Q3_2 <- apply(validation_con_outliers, 2, quantile, 0.75, na.rm = TRUE)  
+IQR_2 <- Q3 - Q1  
+lower_2 <- Q1 - 1.5 * IQR  
+upper_2 <- Q3 + 1.5 * IQR  
+
+#Righe da rimuovere
+#Training set
+outlier_rows <- which(rowSums(data_con_outliers < lower | data_con_outliers > upper, na.rm = TRUE) > 0)  
+#Validation set
+outlier_rows2 <- which(rowSums(validation_con_outliers < lower_2 | validation_con_outliers > upper_2, na.rm = TRUE) > 0)  
+
+#Training set
+data_clean <- def[-outlier_rows, ]
+nrow(def) - nrow(data_clean)  # 7919 righe sono state rimosse
+#Validation set
+data_clean2 <- validation[-outlier_rows2, ]
+nrow(validation) - nrow(data_clean2)  # 3994 righe sono state rimosse
+```
+
+Da una precedente analisi del dataset fornita dai boxplot abbiamo osservato che la variabile redshift presenta degli outliers meno marcati rispetto alle altre, l'approccio usato è quello di una trasformazione logaritmica (mettiamo +1 nel log per sistemare i valori negativi, nel caso della variabile redshift il valore minimo era -0.09959 quindi facendo +1 si sistemano a livello matematico le condizioni per applicare il logaritmo) e consideriamo la sua trasformazione all'interno della nostra analisi in quanto la sua dimostrazione viene così resa più omogenea e sarà più facile gestire gli outliers in quanto saranno marcati sulle code della distribuzione
+
+```{r}
+data_clean$log_redshift <- log(data_clean$redshift+1)
+
+data_clean2$log_redshift <- log(data_clean2$redshift+1)
+```
+
+Con l’obiettivo di riportare tutte le variabili all’interno di un unico range di varianza, passiamo alla normalizzazione dei dati, in modo tale da limitare gli intervalli di valori entro [0,1] senza modificarne la distribuzione complessiva.
+Questa scelta nasce dal fatto che una prima analisi del dataset attraverso il comando summary() ci ha permesso di osservare che le singole colonne del dataset assumono valori all’interno di ampi range, i quali sono inoltre piuttosto diversi tra loro.
+
+```{r}
+#Normalizzazione
+#Training set
+data_normalized <- data_clean
+numeric_columns <- sapply(data_normalized, is.numeric)  
+data_normalized[numeric_columns] <- lapply(data_normalized[numeric_columns], 
+                                           function(x) (x - min(x)) / (max(x) - min(x)))
+
+numeric_vars <- data_clean[sapply(data_clean, is.numeric)]
+#Validation set
+data_normalized2 <- data_clean2
+numeric_columns2 <- sapply(data_normalized2, is.numeric)  
+data_normalized2[numeric_columns2] <- lapply(data_normalized2[numeric_columns2], 
+                                           function(x) (x - min(x)) / (max(x) - min(x)))
+
+numeric_vars2 <- data_clean2[sapply(data_clean2, is.numeric)]
+
+
+# Genera i boxplot per ogni variabile numerica rispetto alla classe con le dovute sistemazioni dei dati 
+par(mfrow = c(3, 3))  
+
+for (var in colnames(numeric_vars)) {
+  boxplot(numeric_vars[[var]] ~ data_clean$class,  # Usa data_clean$class per coerenza
+          main = var, 
+          xlab = "Classe", 
+          ylab = "Valore",
+          col = c("red", "green", "blue"),   
+          outline = TRUE,                    
+          pch = 19)                         
+}
+par(mfrow=c(1,1))
+
+#Osserviamo che la variabile log_redshift presenta degli outliers quindi poniamo come soglia il valore 0.7
+#e procediamo ad eliminare i valori che si discostano significativamente dalla distribuzione complessiva,
+#cioè quei valori che superano questa soglia in quanto sono punti che vanno ben oltre il baffo superiore del boxplot
+
+#Training set
+data_normalized <- data_normalized |>
+  select(-redshift)|>
+  filter(!(log_redshift > 0.7))
+normalized_numeric_vars <- data_normalized[sapply(data_normalized, is.numeric)]
+#Validation set
+data_normalized2 <- data_normalized2 |>
+  select(-redshift)|>
+  filter(!(log_redshift > 0.7))
+normalized_numeric_vars2 <- data_normalized2[sapply(data_normalized2, is.numeric)]
+
+#Rappresentiamo il training set per vedere come è cambiata la distribuzione di log_redshift 
+#dopo aver applicato l'eliminazione con la soglia
+par(mfrow = c(3, 3))
+
+for (var in colnames(normalized_numeric_vars)) {
+  boxplot(normalized_numeric_vars[[var]] ~ data_normalized$class, 
+          main = var, 
+          xlab = "Classe", 
+          ylab = "Valore",
+          col = c("red", "green", "blue"),   
+          outline = TRUE,                    
+          pch = 19)                         
+}
+par(mfrow = c(1,1))
+
+library(gridExtra)
+
+#Rappresentazione grafica delle distribuzioni delle variabili condizionata alle classi
+histograms <- list()
+normalized_numeric_vars <- colnames(data_normalized)[sapply(data_normalized, is.numeric)]
+
+for (i in 1:length(normalized_numeric_vars)) {
+  var <- normalized_numeric_vars[i]
+  
+  # Creiamo il grafico
+  histograms[[i]] <- ggplot(data_normalized, aes_string(x = var, fill = "class")) + 
+    geom_histogram(bins = 30, alpha = 0.6, position = "identity") + 
+    labs(title = paste("Distribuzione di", var), x = var, y = "Frequenza") + 
+    theme_minimal()
+}
+
+grid.arrange(histograms[[1]], histograms[[2]], histograms[[3]], histograms[[4]], histograms[[5]],
+             histograms[[6]], histograms[[7]], histograms[[8]], 
+             ncol = 2)   
+```
+
+Il grafico mostra le distribuzioni di frequenza delle variabili numeriche in esame condizionatamente alla classe.
+Le variabile che risulta maggiormente discriminante è la trasformata di redshift, questa risulta molto informativa nella distinzione delle classi.
+Le variabili alpha e delta mostrano una distribuzione simile differendo solo per i picchi di frequenza.
+La distribuzione più ampia e marcata per la classe GALAXY è ritenuta comprensibile vista la numerosità della classi.
+Le variabili che identificano le magnitudini fotometriche mostrano nuovamente una distinzione per le classi, anche se meno accentuata rispetto alla distribuzione della coartata log_shift.
+Nello specifico la label GALAXY mostra un andamento bimodale, le label QSO mostra una distribuzione asimmetrica e STAR, in queste cinque variabili, una distribuzione più piatta.
+
+```{r}
+#Bilanciamento delle classi
+set.seed(123)
+print(table(data_normalized$class))  
+```
+
+```{r}
+# Undersampling della classe maggiormente rappresentata
+galaxy_class <- data_normalized %>%
+  filter(class == 'GALAXY')
+
+n0 <- nrow(galaxy_class)  
+set.seed(123)
+to_remove <- galaxy_class %>%
+  slice_sample(n = 10000)
+dati <<- data_normalized %>%
+  anti_join(to_remove, by = names(data_normalized))
+
+print(table(dati$class))  
+```
+
+La classe “Galaxy” è maggiormente rappresentata rispetto alle altre, per questo motivo è stata oggetto di undersampling, in modo tale da rendere la distribuzione delle osservazioni all’interno delle 3 classi più omogenea.
+Ci troviamo, anche a seguito di questa operazione, in un contesto di classi sbilanciate in quanto resta molto più numerosa rispetto alle altre, di conseguenza dovremo tenerne conto in fase di interpretazione dei risultati, considerando la possibilità di valutazioni compromesse come ad esempio l’accuracy dei modelli.
+
+## Modeling ed Evaluation
+
+### KNN (K-Nearest Neighbours)
+
+```{r}
+set.seed(123)
+library(MLmetrics)
+
+numeric.training <- dati |> select(alpha, delta, u, g, r, i, z, log_redshift, cam_col)
+numeric.validation <- data_normalized2 |> select(alpha, delta, u, g, r, i, z, log_redshift, cam_col)
+
+class.validation <- data_normalized2$class
+class.training <- dati$class
+
+calc_class_err <- function(act, pred) {
+  mean(act != pred)
+}
+k_to_try <- 3:50
+err_k <- sapply(k_to_try, function(k) {
+  pred <- knn(train = numeric.training,
+              test = numeric.validation, 
+              cl = class.training,
+              k = k)
+  calc_class_err(class.validation, pred)
+})
+
+print(err_k)
+plot(k_to_try, err_k, type = 'b', col = 'blue', 
+     xlab = 'Numero di vicini (k)', ylab = 'Errore di classificazione',
+     main = 'Errore di Classificazione per Diversi Valori di k')
+best_k <- k_to_try[which.min(err_k)]
+best_k  
+
+knn_pred <- knn(train = numeric.training, 
+                test = numeric.validation, 
+                cl = class.training, 
+                k = best_k)
+
+knn_pred <- as.factor(knn_pred)
+class.validation <- factor(class.validation, levels = levels(knn_pred))
+conf_matrix <- confusionMatrix(knn_pred, class.validation)
+print(conf_matrix) #  Accuracy : 0.8323            
+
+#F1SCORE
+f1 <- F1_Score(y_pred = knn_pred, y_true = class.validation) ; f1
+```
+
+Dai risultati ottenuti in merito all’accuracy (la quale essendo in contesto di classi sbilanciate è stata accostata ad una valutazione dell’F1-score che risulta più preciso in questo contesto) e delle curve di ROC delle singole classi, siamo portati a considerare il metodo del KNN come una valida opzione per la classificazione dei nostri dati.
+Esso sembra portare infatti buoni risultati nella precisione della classificazione (F1-score= 0.87), lo confrontiamo con gli altri per determinare quale sia effettivamente il migliore per questo tipo di dati.
+
+Essendo la curva di ROC relativa a contesti binari, all’interno di questa analisi del daset adattiamo le nostre classi a questo tipo di valutazione, applicando una strategia di "one-vs-all" in modo tale da confrontare le singole classi con le altre.
+Siamo quindi in grado di considerare il nostro problema di classificazione a 3 classi come un problema binario, dove le singole etichette sono confrontate con le altre due combinate.
+
+```{r}
+#CURVA DI ROC E AUC
+library(ROCR)
+
+#Convertiamo tutte le classi in factor per assicurarci che sia rispettata tipologia factor
+class.training <- factor(class.training)
+class.validation <- factor(class.validation, levels = levels(class.training))
+
+### "Galaxy" vs "non-Galaxy"
+train_bin1 <- ifelse(class.training == "GALAXY", "1", "0")
+valid_bin1 <- ifelse(class.validation == "GALAXY", 1, 0)
+
+knn_bin1 <- knn(train = numeric.training,
+                test = numeric.validation,
+                cl = train_bin1,
+                k = best_k,
+                prob = TRUE)
+
+prob1 <- attributes(knn_bin1)$prob
+prob1 <- ifelse(knn_bin1 == "1", prob1, 1 - prob1)
+
+pred1 <- prediction(prob1, valid_bin1)
+perf1 <- performance(pred1, "tpr", "fpr")
+auc1 <- performance(pred1, "auc")@y.values[[1]]
+
+### "Quasar" vs "non-Quasar"
+train_bin2 <- ifelse(class.training == "QSO", "1", "0")
+valid_bin2 <- ifelse(class.validation == "QSO", 1, 0)
+
+knn_bin2 <- knn(train = numeric.training,
+                test = numeric.validation,
+                cl = train_bin2,
+                k = best_k,
+                prob = TRUE)
+
+prob2 <- attributes(knn_bin2)$prob
+prob2 <- ifelse(knn_bin2 == "1", prob2, 1 - prob2)
+
+pred2 <- prediction(prob2, valid_bin2)
+perf2 <- performance(pred2, "tpr", "fpr")
+auc2 <- performance(pred2, "auc")@y.values[[1]]
+
+### "Star" vs "Non-Stars"
+train_bin3 <- ifelse(class.training == "STAR", "1", "0")
+valid_bin3 <- ifelse(class.validation == "STAR", 1, 0)
+
+knn_bin3 <- knn(train = numeric.training,
+                test = numeric.validation,
+                cl = train_bin3,
+                k = best_k,
+                prob = TRUE)
+
+prob3 <- attr(knn_bin3, "prob")
+prob3 <- ifelse(knn_bin3 == "1", prob3, 1 - prob3)
+
+pred3 <- prediction(prob3, valid_bin3)
+perf3 <- performance(pred3, "tpr", "fpr")
+auc3 <- performance(pred3, "auc")@y.values[[1]]
+
+### Rappresentazione grafica della curva per le 3 classi
+plot(perf1, col = "red", lwd = 2,
+     main = "ROC Curve - Classificazione Multiclasse (One-vs-All)")
+plot(perf2, add = TRUE, col = "blue", lwd = 2)
+plot(perf3, add = TRUE, col = "darkgreen", lwd = 2)
+
+# Aggiungi la diagonale random classifier
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+
+legend("bottomright", 
+       legend = c("Galaxy", "Quasar", "Star"),
+       col = c("red", "blue", "darkgreen"), 
+       lwd = 2)
+
+#AUC  'GALAXY'
+print(round(auc1, 4)) 
+```
+
+```{r}
+#AUC  'QSO'
+print(round(auc2, 4)) 
+```
+
+```{r}
+#AUC  'STAR'
+print(round(auc3, 4)) 
+```
+
+La rappresentazione grafica delle curve di ROC sembra indicare una buona classificazione dei dati, a livello teorico sarebbe ottimale che le curve fossero più vicine possibile all’angolo sinistro del piano cartesiano e come possiamo notare, le tre curve in questione si avvicinano molto a questa condizione.
+La classificazione di “Galaxy” è particolarmente buona tra tutte le 3 curve, questo potrebbe essere stato influenzato dal fatto che questa classe è quyella maggiormente rappresentata tra le 3, generando uno squilibrio nella classificazione.
+Considerando tutti i risultati di questo metodo, in ogni caso, ci riteniamo soddisfatti della precisione con cui ha prodotto risultati e lo consideriamo un’opzione valida.
+
+### Regressione Logistica
+
+```{r}
+#Training set
+#elimiamo outliers 
+# Creiamo una versione modificata di dati senza toccare l'originale
+dati_mod <- dati
+data_normalized2_mod <- data_normalized2
+
+set.seed(123)
+rows_to_keep <- !rownames(dati_mod) %in% rownames(to_remove)
+dati_mod <- dati_mod[rows_to_keep, ]
+
+numeric.training_mod <- as.matrix(dati_mod |> select(alpha, delta, u, g, r, i, z, log_redshift, starts_with("cam_col")))
+numeric.validation_mod <- as.matrix(data_normalized2_mod |> select(alpha, delta, u, g, r, i, z, log_redshift, starts_with("cam_col")))
+
+class.training_mod <- dati_mod$class
+class.validation_mod <- data_normalized2_mod$class
+
+# Creiamo il modello di regressione logistica multinomiale
+# Creazione del modello di regressione logistica multinomiale
+library(glmnet)
+model <- glmnet(numeric.training_mod, class.training_mod, family = 'multinomial', lambda = 0)
+
+pred_class_mod <- predict(model, numeric.validation_mod, type = "class")
+pred_class_mod <- as.factor(pred_class_mod)
+pred_probs <-  predict(model, numeric.validation_mod, type = "response")
+
+pred_class_mod <- as.factor(pred_class_mod)
+class.validation_mod <- as.factor(class.validation_mod)
+
+pred_class_mod <- factor(pred_class_mod, levels = levels(class.validation_mod))
+conf_matrix <- confusionMatrix(pred_class_mod, class.validation_mod)
+print(conf_matrix)
+
+#F1SCORE
+f1 <- F1_Score(y_true = class.validation, y_pred = pred_class_mod);f1 
+
+#CURVA ROC ED AUC
+pred_probs <- pred_probs[, , 1]  
+class_names_mod <- levels(class.validation_mod)  
+n_classes <- length(class_names_mod)
+colors <- c("red", "blue", "green")  
+
+pred_roclogit <- prediction(pred_probs[, 1], ifelse(class.validation_mod == class_names_mod[1], 1, 0))
+perf_logit <- performance(pred_roclogit, "tpr", "fpr")
+plot(perf_logit, col = colors[1], lwd = 2, main = "Curve ROC (One-vs-All)", xlim = c(0, 1), ylim = c(0, 1))
+
+for (class_index in 2:n_classes) {
+  class_binary <- ifelse(class.validation_mod == class_names_mod[class_index], 1, 0)
+  
+  pred_roclogit <- prediction(pred_probs[, class_index], class_binary)
+  perf_logit <- performance(pred_roclogit, "tpr", "fpr")
+  plot(perf_logit, col = colors[class_index], lwd = 2, add = TRUE)
+}
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+legend("bottomright", legend = class_names_mod, col = colors, lty = 1, lwd = 2, title = "Classi")
+
+#AUC  'GALAXY'
+class_binary1 <- ifelse(class.validation_mod == class_names_mod[1], 1, 0)
+pred_roclogit1 <- prediction(pred_probs[, 1], class_binary1)
+auc_logit1 <- performance(pred_roclogit1, "auc")
+auc_logit1@y.values[[1]] 
+```
+
+```{r}
+#AUC  'QSO'
+class_binary2 <- ifelse(class.validation_mod == class_names_mod[2], 1, 0)
+pred_roclogit2 <- prediction(pred_probs[, 2], class_binary2)
+auc_logit2 <- performance(pred_roclogit2, "auc")
+auc_logit2@y.values[[1]] 
+auc_logit1
+```
+
+```{r}
+#AUC  STAR
+class_binary3 <- ifelse(class.validation_mod == class_names_mod[3], 1, 0)
+pred_roclogit3 <- prediction(pred_probs[, 3], class_binary3)
+auc_logit3 <- performance(pred_roclogit3, "auc")
+auc_logit3@y.values[[1]] 
+```
+
+Per la regressione logistica abbiamo sfruttato il pacchetto glmnet, con cui abbiamo implementato una regressione multiclasse .
+Il modello è privo di penalizzazione, di fatto il valore lambda è nullo, adattandosi al training perfettamente senza alcuna restrizione per quanto riguarda la complessità del modello.
+Per valutare le performance del modello e nello specifico, vista la mancanza di penalizzazione, la capacità di non overfittare i dati è stato valutato rispetto al validation set.
+Abbiamo calcolato l’accuracy e l’ F1-score e tramite l’approccio one vs all siamo andati a implementare indici grafici e numerici, quali la curva di ROC e l’ AUC, per valutare le performance.
+Tutti gli indici si sono mostrati più che soddisfacenti mostrando un'accuratezza complessiva superiore al 94% e indici specifici di sensitivity e specificity superiori all’85% per tutte e tre le classi.
+In tale contesto si è distinta la classe ‘STAR’ con un indice di Sensitivity pari al 99,98% e QSO con un indice di Specificity pari al 99,02%.
+La curva di roc mostra una buona capacità discriminante del classificatore aderendo all’angolo superiore sinistro per per tutte le tre classi, tale tesi viene supportata dall’indice di AUC il cui valore tende a 1 mostrando ancora una buona capacità del modello di separare le classi.
+Infine L’n F1-score mostra un valore pari al 95% definendo nuovamente una buona capacità di classificazione anche se in presenza di squilibri tra le classi in analisi La regressione logistica multiclasse non penalizza è dunque considerato come il miglior modello di classificazione tra quelli proposti non dando segnali di overfitting evidenti.
+Si deve precisare che potrebbe esser corretto valutare una penalizzazione del modello in contesti di maggiore complessità o numero di variabili in esame per garantire una buona generalizzazione.
+
+### Decision Trees
+
+```{r}
+library(tree)
+tree.stars <- tree(class ~ ., data = dati, method = "class")
+summary(tree.stars)
+
+#L'error rate è del 4%
+plot(tree.stars)
+text(tree.stars, pretty = 0) 
+
+train.pred <- predict(tree.stars , dati , type = "class")
+table(train.pred , dati$class)
+#Calcoliamo la percentuale di osservazioni classificate correttamente nel training set
+(11464+6946+8398)/nrow(dati)
+
+tree.pred <- predict(tree.stars , data_normalized2 , type = "class")
+table(tree.pred, data_normalized2$class)
+#Calcoliamo la percentuale di osservazioni classificate correttamente nel test set
+(11477+4011+4834)/nrow(data_normalized2)
+#Il 92% delle osservazioni viene classificata correttamente con il metodo degli alberi decisionali
+
+#F1SCORE
+f1 <- F1_Score(y_true = class.validation, y_pred = tree.pred) ; f1  
+
+#CURVA DI ROC E AUC
+numeric.training <- as.data.frame(dati |> select(alpha, delta, u, g, r, i, z, log_redshift, cam_col))
+numeric.validation <- as.data.frame(data_normalized2 |> select(alpha, delta, u, g, r, i, z, log_redshift, cam_col))
+#per estrarre le probabilità trasformiamo in data frame, altrimenti non è possibile
+tree.prob <- predict(tree.stars, numeric.validation, type = "vector")
+
+# "Galaxy" vs "non-Galaxy"
+tree_pred1 <- predict(tree.stars, numeric.validation, type = "class")
+prob_tree1 <- ifelse(tree_pred1 == "GALAXY", 1, 0) 
+
+pred_tree1 <- prediction(prob_tree1, valid_bin1)
+perf_tree1 <- performance(pred_tree1, "tpr", "fpr")
+auc_tree1 <- performance(pred_tree1, "auc")@y.values[[1]]
+
+# "Quasar" vs "non-Quasar"
+tree_pred2 <- predict(tree.stars, numeric.validation, type = "class")
+prob_tree2 <- ifelse(tree_pred2 == "QSO", 1, 0)
+
+pred_tree2 <- prediction(prob_tree2, valid_bin2)
+perf_tree2 <- performance(pred_tree2, "tpr", "fpr")
+auc_tree2 <- performance(pred_tree2, "auc")@y.values[[1]]
+
+# "Star" vs "Non-Stars"
+tree_pred3 <- predict(tree.stars, numeric.validation, type = "class")
+prob_tree3 <- ifelse(tree_pred3 == "STAR", 1, 0)  # Probabilità "1" (Star)
+
+pred_tree3 <- prediction(prob_tree3, valid_bin3)
+perf_tree3 <- performance(pred_tree3, "tpr", "fpr")
+auc_tree3 <- performance(pred_tree3, "auc")@y.values[[1]]
+
+### Rappresentazione grafica della curva ROC per le 3 classi
+plot(perf_tree1, col = "red", lwd = 2,
+     main = "ROC Curve - Classificazione Multiclasse (One-vs-All)")
+plot(perf_tree2, add = TRUE, col = "blue", lwd = 2)
+plot(perf_tree3, add = TRUE, col = "darkgreen", lwd = 2)
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+legend("bottomright", 
+       legend = c("Galaxy", "Quasar", "Star"),
+       col = c("red", "blue", "darkgreen"), 
+       lwd = 2)
+
+#AUC  'GALAXY'
+print(round(auc_tree1, 4)) 
+```
+
+```{r}
+#AUC  'QSO'
+print(round(auc_tree2, 4)) 
+```
+
+```{r}
+#AUC  'STAR'
+print(round(auc_tree3, 4)) 
+```
+
+```{r}
+#Applichiamo la tecnica di pruning per vedere se potrebbe essere ottimizzato l'algoritmo
+
+cv.stars <- cv.tree(tree.stars , FUN = prune.misclass) ; cv.stars
+par(mfrow = c(1, 2))
+plot(cv.stars$size , cv.stars$dev, type = "b")
+points(cv.stars$size[which.min(cv.stars$dev)], cv.stars$dev[which.min(cv.stars$dev)], col = "red", pch = 19, cex = 1.5)
+plot(cv.stars$k, cv.stars$dev, type = "b")
+par(mfrow = c(1, 1))
+
+#Scegliamo k=5 nodi ed applichiamo il comando per fare pruning dell'albero
+#prune.stars <- prune.misclass(tree.stars , best = 5)
+#Error in prune.tree(tree = cv.stars, best = 5, method = "misclass") : not legitimate tree
+#Il nostro albero non può essere oggetto di ulteriore sfoltimento. 
+```
+
+### LDA - Linear Discriminant Analysis
+
+Implementazione di modelli generativi come QDA e LDA, appartenenti all'analisi discriminante.
+Questi modelli si distinguono dai modelli discriminativi perché considerano la distribuzione delle variabili distintamente per ciascuna classe di appartenenza.
+Prima di applicare i modelli, è necessario verificare che le loro assunzioni siano soddisfatte.
+
+```{r}
+# 1. Verifica della varianza comune tra le classi tramite boxplot condizionati alla classe
+par(mfrow = c(3,3))
+balanced_numeric_vars <- dati[sapply(dati, is.numeric)]
+
+for (var in colnames(balanced_numeric_vars)) {
+  boxplot(balanced_numeric_vars[[var]] ~ dati$class,  # Usa data_clean$class per coerenza
+          main = var, 
+          xlab = "Classe", 
+          ylab = "Valore",
+          col = c("red", "green", "blue"),   
+          outline = TRUE,                    
+          pch = 19)                         
+}
+par(mfrow = c(1,1))
+```
+
+Dai boxplot si può osservare che, per alcune variabili, la varianza è simile tra le classi, mentre per altre, come il `log-redshift` o le variabili `z` e `g`, si notano differenze evidenti.
+Questo suggerisce che l'assunzione di varianza comune potrebbe non essere soddisfatta per tutte le variabili.
+
+```{r}
+# 2. Verifica della covarianza tra le variabili  
+# Si analizza graficamente se la matrice di covarianza può essere considerata comune tra le classi.
+#install.packages("candisc")  
+library(candisc)
+
+covEllipses(balanced_numeric_vars[,1:(dim(balanced_numeric_vars)[2]-1)], 
+            factor(dati$class), 
+            fill = TRUE, 
+            pooled = FALSE, 
+            col = c("blue", "red"), 
+            variables = c(1:5, (dim(balanced_numeric_vars)[2]-1)), 
+            fill.alpha = 0.05)
+```
+
+L'analisi grafica delle ellissi di covarianza suggerisce che, per alcune variabili, la matrice di covarianza tra le classi è simile, supportando l'assunzione di covarianza comune.
+Tuttavia, per altre variabili (es. `r` e `z`), si osservano differenze significative in dimensione e orientamento delle ellissi, indicando che l'assunzione potrebbe non essere valida per tutte le feature.
+Questo potrebbe influenzare l'efficacia di LDA, che assume una covarianza comune tra le classi.
+Si valuterà e confronterà il risultato ottenuto da tale modello con quello della QDA, la quale non presenta questo tipo di assunzioni.
+
+```{r}
+# Verifica della normalità condizionata alla classe tramite qqplot
+# Costruzione dei QQ-plot per la verifica della normalità delle osservazioni condizionate alla classe (sii analizzano le prime quattro variabili numeriche)
+par(mfrow = c(3, 3))  
+for (i in colnames(balanced_numeric_vars)) {
+  qqnorm(dati[dati$class == "STAR", ][[i]], main = paste(i, "- STAR"))
+  qqline(dati[dati$class == "STAR", ][[i]], col = 2)
+}
+par(mfrow = c(3, 3))  
+for (i in colnames(balanced_numeric_vars)) {
+  qqnorm(dati[dati$class == "QSO", ][[i]], main = paste(i, "- QSO"))
+  qqline(dati[dati$class == "QSO", ][[i]], col = 2)
+}
+par(mfrow = c(3, 3))  
+for (i in colnames(balanced_numeric_vars)) {
+  qqnorm(dati[dati$class == "GALAXY", ][[i]], main = paste(i, "- GALAXY"))
+  qqline(dati[dati$class == "GALAXY", ][[i]], col = 2)
+}
+par(mfrow = c(1, 1)) 
+```
+
+Analizzando i QQ-plot delle tre classi le variabili non sembrerebbero essere distribuite come normali, esse infatti presentano significative imprecisioni sulle code rispetto alla bisettrice che sarebbe riferimento per la valutazione della normalità ed alcune di esse come ad esempio alpha anche nella parte centrale della distribuzione si discostano in modo chiaro dalla distribuzione teorica della normale.
+Rispetto a questa terza assunzione, come per le precedenti, non siamo portati ad affermare che venga rispettata dai dati e saremmo propensi a non utilizzare il modello LDA per questo.
+
+```{r}
+#Verifichiamo la distribuzione tramite la funzione di densità
+library(ggplot2)
+library(gridExtra)
+
+plot_density <- list()
+# Costruzione curve di densità condizionate rispetto alla classe
+for(i in colnames(balanced_numeric_vars)){
+  plot_density[[i]] <- ggplot(dati, aes_string(x = i, y = "..density..", col = "class")) + 
+    geom_density(aes(y = ..density..)) + 
+    scale_color_manual(values = c("blue", "red", "green")) +  # Aggiungi un terzo colore
+    theme(legend.position = "none")
+}
+
+do.call(grid.arrange, c(plot_density, nrow = 4))
+```
+
+Si nota dalla rappresentazione che le variabili non rispettano la condizione di normalità condizionata per classe, a livello grafico si osserva che le distribuzioni delle variabili sono per lo più bimodali, non simmetriche e non siamo propensi a concludere che ci sia normalità.
+
+```{r}
+# Test di Shapiro-Wilks
+numeric_vars <- colnames(balanced_numeric_vars)[sapply(balanced_numeric_vars, is.numeric)]
+
+pvalue_shapiro <- matrix(0, nrow = length(numeric_vars), ncol = 3)
+rownames(pvalue_shapiro) <- numeric_vars
+colnames(pvalue_shapiro) <- c("QSO", "STAR", "GALAXY")
+
+# Esegui il test di Shapiro per ciascuna variabile numerica, condizionato alla classe
+#for (i in colnames(balanced_numeric_vars)[sapply(balanced_numeric_vars, is.numeric)]) {
+  #pvalue_shapiro[i, "STAR"]   <- shapiro.test(balanced_numeric_vars[dati$class == "STAR", ][[i]])$p.value
+  #pvalue_shapiro[i, "QSO"]    <- shapiro.test(balanced_numeric_vars[dati$class == "QSO", ][[i]])$p.value
+  #pvalue_shapiro[i, "GALAXY"] <- shapiro.test(balanced_numeric_vars[dati$class == "GALAXY", ][[i]])$p.value
+#}
+
+#COMMENTO: Error in shapiro.test(balanced_numeric_vars[dati$class == "STAR", ][[i]]) :
+#sample size must be between 3 and 5000 : il nostro dataset ha troppe osservazioni quindi non possiamo applicare il test
+```
+
+```{r}
+
+library(MASS)
+library(caret)
+
+lda.fit <- lda(class ~ ., data = dati)
+print(lda.fit)
+
+
+class.validation <- factor(data_normalized2$class)
+
+numeric.validation <- as.data.frame(numeric.validation) %>%
+  mutate(
+    alpha = as.numeric(alpha),
+    delta = as.numeric(delta),
+    u = as.numeric(u),
+    g = as.numeric(g),
+    r = as.numeric(r),
+    i = as.numeric(i),
+    z = as.numeric(z),
+    log_redshift = as.numeric(log_redshift),
+    cam_col = as.factor(cam_col)
+  )
+
+lda_pred <- predict(lda.fit, numeric.validation)
+lda_class <- factor(lda_pred$class, levels = levels(class.validation))
+
+confusionMatrix(lda_class, class.validation) # Accuracy : 0.7852   
+
+#F1SCORE
+f1 <- F1_Score(y_true = class.validation, y_pred = lda_class); f1  
+
+#CURVA DI ROC E AUC
+# "Galaxy" vs "non-Galaxy"
+lda_pred1 <- predict(lda.fit, numeric.validation)
+lda_class1 <- factor(lda_pred1$class, levels = levels(class.validation))
+prob_lda1 <- ifelse(lda_class1 == "GALAXY", 1, 0)  
+
+pred_lda1 <- prediction(prob_lda1, valid_bin1)
+perf_lda1 <- performance(pred_lda1, "tpr", "fpr")
+auc_lda1 <- performance(pred_lda1, "auc")@y.values[[1]]
+
+# "Quasar" vs "non-Quasar"
+lda_pred2 <- predict(lda.fit, numeric.validation)
+lda_class2 <- factor(lda_pred2$class, levels = levels(class.validation))
+prob_lda2 <- ifelse(lda_class2 == "QSO", 1, 0)  
+
+pred_lda2 <- prediction(prob_lda2, valid_bin2)
+perf_lda2 <- performance(pred_lda2, "tpr", "fpr")
+auc_lda2 <- performance(pred_lda2, "auc")@y.values[[1]]
+
+# "Star" vs "Non-Stars"
+lda_pred3 <- predict(lda.fit, numeric.validation)
+lda_class3 <- factor(lda_pred3$class, levels = levels(class.validation))
+prob_lda3 <- ifelse(lda_class3 == "STAR", 1, 0)  # Probabilità "1" (Star)
+
+pred_lda3 <- prediction(prob_lda3, valid_bin3)
+perf_lda3 <- performance(pred_lda3, "tpr", "fpr")
+auc_lda3 <- performance(pred_lda3, "auc")@y.values[[1]]
+
+### Rappresentazione grafica della curva ROC per le 3 classi
+plot(perf_lda1, col = "red", lwd = 2,
+     main = "ROC Curve - Classificazione Multiclasse (One-vs-All)")
+plot(perf_lda2, add = TRUE, col = "blue", lwd = 2)
+plot(perf_lda3, add = TRUE, col = "darkgreen", lwd = 2)
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+legend("bottomright", 
+       legend = c("Galaxy", "Quasar", "Star"),
+       col = c("red", "blue", "darkgreen"), 
+       lwd = 2)
+#AUC  'GALAXY'
+print(round(auc_lda1, 4))  
+```
+
+```{r}
+#AUC  'QSO'
+print(round(auc_lda2, 4))  
+```
+
+```{r}
+#AUC  'STAR'
+print(round(auc_lda3, 4)) 
+```
+
+Non essendo state verificate le assunzioni di partenza di distribuzione normale delle variabili ed omoschedasticità della varianza, concludiamo che il modello LDA non è appropriato alla classificazione dei nostri dati, in quanto il risultato che è stato ottenuto in termini di valutazione della classificazione potrebbe essere non valido in quanto i presupposti di questo metodo non sono garantiti sui dati a cui è applicato.
+Questo modello inoltre causa underfitting in quanto il bias è molto alto e non rende ottimale la valutazione.
+Procediamo con l’applicazione del QDA ai nostri dati per valutrne l’efficacia, considerato che non richiede che siano verificate le condizioni che sono invece necessarie con il modello lineare.
+
+### QDA - Quadratic Discriminant Analysis
+
+```{r}
+qda_model <- qda(class ~ ., data = dati)
+qda_model
+#L'output presenta le medie per ciascun gruppo di classificazione
+
+#Nel training set
+qda.class2 <- predict(qda_model, dati)$class
+table(qda.class2, dati$class)
+#Accuracy nel training set:
+(11120+7295+8392)/nrow(dati) 
+#Nel test
+qda.class <- predict(qda_model, data_normalized2)$class
+table(qda.class, class.validation)
+#Accuracy nel test set:
+(12145+3136+6)/nrow(data_normalized2)
+#Il 69.2% delle osservazioni sono classificate correttamente con la QDA nel test set
+
+#F1SCORE
+f1 <- F1_Score(y_true = class.validation, y_pred = tree.pred) ; f1
+```
+
+Confrontando i risultati della matrice di confusione del training set e del validation set osserviamo una netta differenza: nel training set il modello QDA sembra funzionare piuttosto bene, mentre con il validation set otteniamo risultati decisamente deludenti, soprattutto nella classe "Star".
+Questa differenza viene spiegata dalla natura della Quadratic Discriminant Analysis, la quale tende ad "overfittare" o dati essendo un modello più flessibile rispetto a quello lineare.
+Per questo motivo sui dati di training le performance sono pressoché ottimali, mentre nel momento in cui viene modificato il set di dati a cui viene applicato e si passa al validation set, i risultati sono fallimentari e non è in grado di genralizzare sufficientemente.
+
+```{r}
+#CURVA DI ROC E AUC
+# "Galaxy" vs "non-Galaxy"
+qda_pred1 <- predict(qda_model, numeric.validation)$class
+qda_class1 <- factor(qda_pred1, levels = levels(class.validation))
+prob_qda1 <- ifelse(qda_class1 == "GALAXY", 1, 0) 
+
+pred_qda1 <- prediction(prob_qda1, valid_bin1)
+perf_qda1 <- performance(pred_qda1, "tpr", "fpr")
+auc_qda1 <- performance(pred_qda1, "auc")@y.values[[1]]
+
+# "Quasar" vs "non-Quasar"
+qda_pred2 <- predict(qda_model, numeric.validation)$class
+qda_class2 <- factor(qda_pred2, levels = levels(class.validation))
+prob_qda2 <- ifelse(qda_class2 == "QSO", 1, 0)  
+
+pred_qda2 <- prediction(prob_qda2, valid_bin2)
+perf_qda2 <- performance(pred_qda2, "tpr", "fpr")
+auc_qda2 <- performance(pred_qda2, "auc")@y.values[[1]]
+
+# "Star" vs "Non-Stars"
+qda_pred3 <- predict(qda_model, numeric.validation)$class
+qda_class3 <- factor(qda_pred3, levels = levels(class.validation))
+prob_qda3 <- ifelse(qda_class3 == "STAR", 1, 0)   
+
+pred_qda3 <- prediction(prob_qda3, valid_bin3)
+perf_qda3 <- performance(pred_qda3, "tpr", "fpr")
+auc_qda3 <- performance(pred_qda3, "auc")@y.values[[1]]
+
+### Rappresentazione grafica della curva ROC per le 3 classi
+plot(perf_qda1, col = "red", lwd = 2,
+     main = "ROC Curve - Classificazione Multiclasse (One-vs-All)")
+plot(perf_qda2, add = TRUE, col = "blue", lwd = 2)
+plot(perf_qda3, add = TRUE, col = "darkgreen", lwd = 2)
+
+abline(a = 0, b = 1, lty = 2, col = "gray")
+
+legend("bottomright", 
+       legend = c("Galaxy", "Quasar", "Star"),
+       col = c("red", "blue", "darkgreen"), 
+       lwd = 2)
+
+#AUC  'GALAXY'
+print(round(auc_qda1, 4)) 
+```
+
+```{r}
+#AUC  'QSO'
+print(round(auc_qda2, 4))  
+```
+
+```{r}
+#AUC  'STAR'
+print(round(auc_qda3, 4)) 
+```
+
+I risultati della curva di ROC non sono ottimali per quanto riguarda la classificazione di “Star”, tuttavia consideriamo che quanto è stato rappresentato è il risultato di una conversione di un problema a 3 classi in un problema binario: questo cambiamento potrebbe aver influenzato l’output del modello in quanto avevamo precedentemente osservati una certa difficoltà del modello QDA a classificare la terza tipologia, e probabilmente questo difetto viene accentuato nel momento in cui si mettono insieme le classi “Galaxy” e “Quasar”, rispetto alle quali “Star” sembra essere classificata molto male, praticamente alla pari di una classificazione casuale al 50%.
+
+## Deployment
+
+Vista le performance ottenute nella fase precedente si sceglie di procedere con il modello di regressione logistica, il quale ha presentato la miglior capacita di discriminazione tra le classi.
+SI considera come training set l’unione dei precedenti test di training e validation, questi erano stati usati per allenare il classificatore e trovare le migliori stime per gli hyper parameters.
+Si procede ora a valutare le performance tramite il test set, questo, differentemente da training e validation che sono soggetti a una fase di pulizia e pre processing, rimane ‘sporco’ presentando nuovi dati che il che il modelli non sono stati allenati a gestire valutando la su capacita di generalizzazione.
+
+```{r}
+test$log_redshift <- log(test$redshift + 1)
+test <- test[,-10]
+
+train <- rbind(dati, data_normalized2)
+
+set.seed(123)
+
+# Prepara i dati
+numeric.train <- as.matrix(train |> select(alpha, delta, u, g, r, i, z, log_redshift, cam_col))
+numeric.test <- as.matrix(test |> select(alpha, delta, u, g, r, i, z, log_redshift, cam_col))
+
+class.train <- factor(train$class)   
+class.test <- factor(test$class)   
+
+# Modello di regressione logistica multinomiale
+mod <- glmnet(numeric.train, class.train, family = 'multinomial', lambda = 0)
+
+# Predizioni
+pred_class_test <- predict(mod, numeric.test, type = "class")
+pred_class_test <- factor(pred_class_test, levels = levels(class.train))  
+pred_probs_test <- predict(mod, numeric.test, type = "response")
+
+# Matrice di confusione
+conf_matrix <- confusionMatrix(pred_class_test, class.test)
+print(conf_matrix)
+
+# F1 Score
+f1 <- F1_Score(y_true = class.test, y_pred = pred_class_test)
+f1
+
+```
+
+Il modello, rispetto ai risultati ottenuti per il validation set, presenta dei risultati meno soddisfacenti, ma comunque positivi.
+Come già spiegato precedentemente la mancanza di penalizzazione della complessità del modello va a discapito della sua capacita di generalizzazione, favorendo la tenenza all’overfitting nel training set e quindi un valore dell’errore quadratico medio più basso rispetto al test set.
+Si può notare nella confusion matrix un tasso di true positive pari al 44%, che però risulta essere il valore più ‘critico’; di fatto gli atri valori di true positive rate sono superiori al 68%.
+La classe star presenta un valore della sensitivity pari al 98%.
+Il valore dell'F1-score è pari al 73% suggerendo che il modello è capace di predire correttamente le classi in modo relativamente affidabile.
