@@ -89,3 +89,7 @@ The project considers several classification approaches:
 - Decision Trees
 - Model comparison using train/test/validation splits
 
+## Authors
+- Anna Ciapparelli
+- Clelia Meloni
+- Tommaso Roncaglio
